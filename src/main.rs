@@ -1,43 +1,35 @@
-use serde::{Deserialize, Serialize};
-use mongodb::{bson::oid::ObjectId, Client, Collection, bson::doc};
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Auteur {
-    #[serde(rename = "_id")]
-    id: Option<ObjectId>,
-    prenom: String,
-    nom: String,
-    email: String
-}
-
-impl Auteur {
-    fn new(prenom: String, nom: String, email: String) -> Self {
-        Auteur { id: None, prenom, nom, email }
-    }
-}
+mod models;
+mod repositories;
+use crate::models::Auteur;
+use crate::repositories::auteur_repository::AuteurRepository;
+use mongodb::{Client, Collection, bson::doc};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>>  {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let url = "mongodb://localhost:27017";
     let client = Client::with_uri_str(url).await?;
     let db = client.database("apprentissage");
+
+    let repo = AuteurRepository::new(&db);
 
     let auteur_collection: Collection<Auteur> = db.collection("authors");
 
     let auteur_sans_id = Auteur::new(
         "Guillaume".into(),
         "Gomez".into(),
-        "guillaumegomez@gmail.com".into()
-        );
+        "guillaumegomez@gmail.com".into(),
+    );
 
-    let resultat_insertion = auteur_collection.insert_one(&auteur_sans_id).await?;
+    repo.creer(auteur_sans_id)
 
     println!("Inséré avec l'_id : {:?}", resultat_insertion.inserted_id);
-    match auteur_collection.find_one(doc! {"prenom": "Guillaume"}).await?  {
+    match auteur_collection
+        .find_one(doc! {"prenom": "Guillaume"})
+        .await?
+    {
         Some(auteur) => println!("Relu {:?}", auteur),
-        None => println!("Utilisateur introuvable")
+        None => println!("Utilisateur introuvable"),
     }
-
 
     Ok(())
 }
